@@ -8,7 +8,7 @@
 
 \title{基于翻译技术的流量调度}
 \author{王文鑫}
-\date{2016年1月5日}
+\date{2016年1月15日}
 \AtBeginSection[]
 {
   \begin{frame}<beamer> 
@@ -34,11 +34,11 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Mapping of Address and Port Using (NAT64) Translation}
+  \frametitle{Mapping of Address and Port Using Translation}
 
   \begin{block}{做法}
     \begin{itemize}
-    \item 使用NAT64，在IPv6网络上传输IPv4数据包
+    \item 在IPv6网络上传输IPv4数据包
     \item 使用固定的端口划分和分配共享全局地址
     \item 每个CPE获取一段全局地址的端口，进行私有IPv4地址到全局IPv4地址的端口映射
     \item 使用一个特定的IPv6前缀翻译进出口的数据包，通过路由引向BR
@@ -56,9 +56,9 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Mapping of Address and Port Using (NAT64) Translation}
+  \frametitle{Mapping of Address and Port Using Translation}
 
-  \includegraphics[width=\textwidth]{figs/MAP-T-details.png}  
+  \includegraphics[width=\textwidth]{figs/MAP-T-details.pdf}  
 \end{frame}
 
 \subsection{高复用比带来的问题}
@@ -76,7 +76,7 @@
   \frametitle{解决方法}
   \includegraphics[width=\textwidth]{figs/MAP-T-DS-Lite.pdf}  
 
-  转而使用粒度更细、复用比更高的NAT，如DS-Lite
+  转而使用粒度更细、复用比更高的翻译/封装机制，如DS-Lite
 \end{frame}
 
 \section{研究目标}
@@ -103,12 +103,6 @@
   \end{itemize}
 \end{frame}
 
-\subsection{模型}
-\begin{frame}
-  \frametitle{模型}
-  \includegraphics[height=8em]{figs/CPEs-BRs.pdf}  
-\end{frame}
-
 \section{研究路线}
 \subsection{工作划分}
 
@@ -129,44 +123,62 @@
 
 \begin{frame}
   \frametitle{选择算法：决定某个数据包使用的翻译器}
-  \begin{block}{类比4层负载均衡器}
-    \begin{itemize}
-    \item 轮询
-    \item 最小连接数
-    \item 加权
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{block}{类比4层负载均衡器}
       \begin{itemize}
       \item 轮询
       \item 最小连接数
+      \item 加权
+        \begin{itemize}
+        \item 轮询
+        \item 最小连接数
+        \end{itemize}
+      \item 地址哈希
+        \begin{itemize}
+        \item 需要处理地址非均匀分布的情况
+        \end{itemize}
       \end{itemize}
-    \item 地址哈希
-      \begin{itemize}
-      \item 需要处理地址非均匀分布的情况
-      \end{itemize}
-    \end{itemize}
-  \end{block}
+    \end{block}
+    \column{0.5\textwidth}
+    \begin{figure}[ht]
+    \begin{center}
+      \includegraphics[width=15em]{figs/BR-selection.pdf}  
+    \end{center}
+    \end{figure}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{选择算法}
-  \begin{block}{特定的路由策略}
-  \begin{itemize}
-  \item 将有特定目的的一级翻译器分成不同的策略组
-    \begin{itemize}
-    \item 电信组、优库组……默认组
-    \end{itemize}
-  \item 每个流匹配到一个策略组内
-  \item 若组内有多个翻译器，则继续负载均衡
-  \end{itemize}
-  \end{block}
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{block}{特定的路由策略}
+      \begin{itemize}
+      \item 将有特定目的的一级翻译器分成不同的策略组
+        \begin{itemize}
+        \item 电信组、优库组……默认组
+        \end{itemize}
+      \item 每个流匹配到一个策略组内
+      \item 若组内有多个翻译器，则继续负载均衡
+      \end{itemize}
+    \end{block}
+    \column{0.5\textwidth}
+    \begin{figure}[ht]
+      \begin{center}
+        \includegraphics[width=15em]{figs/BR-selection-policy.pdf}  
+      \end{center}
+    \end{figure}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{选择算法}
   \begin{block}{难点}
     \begin{itemize}
-    \item 有效地在分配到的翻译器中分配负载
-    \item 结合分配算法，使得各翻译器间的负载达到均衡
-    \item 对于有连接的传输协议（TCP），保证某个流的所以包通过相同的翻译器
+    \item 有效性
+    \item 与分配算法的配合度
+    \item 对于有连接的传输协议（TCP），保证某个流的所有包通过相同的翻译器
     \end{itemize}
   \end{block}
 \end{frame}
@@ -175,34 +187,67 @@
 
 \begin{frame}
   \frametitle{分配算法：CPE共享所有翻译器}
-  \begin{itemize}
-  \item 依赖CPE的选择算法进行负载均衡
-  \item 可以在CPE间协调
-  \item 无法根据一级翻译器的状态进行调整
-  \end{itemize}
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{itemize}
+    \item 依赖CPE的选择算法进行负载均衡
+    \item 无法根据一级翻译器的状态进行调整
+    \item 性能并不一定差，可以作为参考算法
+    \end{itemize}
+    \column{0.5\textwidth}
+    \begin{figure}[ht]
+      \begin{center}
+        \includegraphics[width=15em]{figs/BR-delegation-shared.pdf}  
+      \end{center}
+    \end{figure}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{分配算法：在CPE间静态分配翻译器}
-  \begin{itemize}
-  \item 在配置CPE时指定可以使用的翻译器
-  \item 无法使用其它CPE得到的翻译器
+  \begin{columns}
+    \column{0.5\textwidth}
     \begin{itemize}
-    \item 即便它们是空闲的
-    \item 即便本CPE得到的翻译器出错
+    \item 在配置CPE时指定可以使用的翻译器
+    \item 无法使用其它CPE得到的翻译器
+      \begin{itemize}
+      \item 即便它们是空闲的
+      \item 即便本CPE分配到的翻译器出错
+      \end{itemize}
     \end{itemize}
-  \end{itemize}
+    \column{0.5\textwidth}
+    \begin{figure}[ht]
+      \begin{center}
+        \includegraphics[width=15em]{figs/BR-delegation-static.pdf}  
+      \end{center}
+    \end{figure}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{分配算法：在CPE间动态分配翻译器}
+  \begin{columns}
+    \column{0.5\textwidth}
   \begin{block}{引入中心控制器}
     \begin{itemize}
     \item 获取各个一级翻译器的状态
+    \begin{itemize}
+    \item e.g. SNMP
+    \end{itemize}
     \item 为各个CPE分配翻译器
+    \begin{itemize}
+    \item e.g. DHCP信令
+    \end{itemize}
     \item 当翻译器的负载/状态发生变化时，重新分配
     \end{itemize}
   \end{block}
+    \column{0.5\textwidth}
+    \begin{figure}[ht]
+      \begin{center}
+        \includegraphics[width=15em]{figs/BR-delegation-centralized.pdf}  
+      \end{center}
+    \end{figure}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
@@ -224,10 +269,20 @@
   \begin{itemize}
   \item 结合选择算法，使得无论整体负载稳定与否，各翻译器间的负载尽量达到均衡
   \item 在平稳状态下，各翻译器的负载应当较为稳定，不应抖动
-  \item 对于有连接的传输协议（TCP），需要保证某个流的所有包通过相同的翻译器
-    \begin{itemize}
-    \item 即便某个CPE分配到的翻译器集合发生变化，当前未结束的流的路由应该保持不变
-    \end{itemize}
+  \item 对于有连接的传输协议（TCP），即便某个CPE分配到的翻译器集合发生变化，当前未结束的流的路由应该保持不变
+  \end{itemize}
+\end{frame}
+
+\section{进度安排}
+
+\begin{frame}
+  \frametitle{进度安排}
+  \begin{itemize}
+  \item 1月16日-2月29日：项目代码阅读和整理，对当前流量特性进行测量和分析
+  \item 3月1日-中期审查：翻译器选择算法设计和实现
+  \item 中期审查-5月20日：翻译器分配算法设计和实现
+  \item 5月20日-6月5日：整体算法的性能测量
+  \item 6月5日-答辩：论文完善及答辩准备
   \end{itemize}
 \end{frame}
 
@@ -235,7 +290,14 @@
 \begin{frame}
   \frametitle{参考文献}
   \begin{itemize}
-  \item Understanding CSM Load Balancing Algorithms
+  \item \href{https://tools.ietf.org/html/rfc7599}{RFC7599}
+  \item \href{https://tools.ietf.org/html/rfc7597}{RFC7597}
+  \item \href{https://tools.ietf.org/html/rfc7598}{RFC7598}
+  \item \href{https://tools.ietf.org/html/rfc6052}{RFC6052}
+  \item
+    \href{https://wiki.opendaylight.org/images/4/42/OpenDaylight-lb-prj-prop-v3.pdf}{OpenDaylight Project Proposal “Dynamic Flow Management”}
+  \item
+    \href{http://www.cisco.com/c/en/us/support/docs/interfaces-modules/content-switching-module/28580-lb-algorithms.html}{Understanding CSM Load Balancing Algorithms}
   \end{itemize}
 \end{frame}
 \end{document}
